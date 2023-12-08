@@ -64,6 +64,37 @@ def add_question(dimension, output, src=None, ref=None, context=None, task=None)
                 cur_input = 'question: Is this summary relevant to the reference? </s> summary: ' + output[i] + ' </s> reference: ' + ref[i]
             else:
                 raise NotImplementedError('The input format for this dimension is still undefined. Please customize it first.')
+        # For translation
+        elif task == 'translation':
+            if dimension == 'fluency':
+                cur_input = 'question: Is this a fluent translation? </s> translation: ' + output[i]
+            elif dimension == 'coherence':
+                cur_input = 'question: Is this a coherent translation of the original? </s> translation: ' + output[i] + ' </s> original: ' + src[i]
+            elif dimension == 'consistency':
+                cur_input = 'question: Is this translation consistent with the original? </s> translation: ' + output[i] + ' </s> original: ' + src[i]
+            elif dimension == 'relevance':
+                cur_input = 'question: Is this translation relevant to the reference? </s> translation: ' + output[i] + ' </s> reference: ' + ref[i]
+            else:
+                raise NotImplementedError('The input format for this dimension is still undefined. Please customize it first.')
+        elif task == 'qa':
+            if dimension == 'naturalness':
+                cur_input = 'question: Is this a natural response? </s> response: ' + output[i]
+            elif dimension == 'fluency':
+                cur_input = 'question: Is this a fluent response? </s> translation: ' + output[i]
+            elif dimension == 'coherence':
+                cur_input = 'question: Is this a coherent response given the question? </s> response: ' \
+                            + output[i] + ' </s> question: ' + src[i]
+            elif dimension == 'engagingness':
+                cur_input = 'question: Is this an engaging and informative response given the question? </s> response: ' \
+                            + output[i] + ' </s> question: ' + src[i]
+            elif dimension == 'groundedness':
+                cur_input = 'question: Is this response consistent with knowledge in the question? </s> response: ' \
+                            + output[i] + ' </s> question: ' + src[i]
+            elif dimension == 'understandability':
+                cur_input = 'question: Is this an understandable response? </s> response: ' + output[i]
+            else:
+                raise NotImplementedError(
+                    'The input format for this dimension is still undefined. Please customize it first.')
         # For dialogues
         elif task == 'dialogue':
             if dimension == 'naturalness':
