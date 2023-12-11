@@ -378,15 +378,16 @@ class TranslationEvaluator:
 
         return eval_scores
 
-class TranslationEvaluator:
-    def __init__(self, model_name_or_path='MingZhong/unieval-sum', max_length=1024, device='cuda:0', cache_dir=None):
+
+class QAEvaluator:
+    def __init__(self, model_name_or_path='MingZhong/unieval-dialog', max_length=1024, device='cuda:0', cache_dir=None):
         """ Set up evaluator for translations"""
         self.scorer = UniEvaluator(model_name_or_path=model_name_or_path,
                                    max_length=max_length,
                                    device=device,
                                    cache_dir=cache_dir)
-        self.task = 'translation'
-        self.dimensions = ['coherence', 'consistency', 'fluency', 'naturalness']
+        self.task = 'qa'
+        self.dimensions = ['coherence', 'fluency', 'naturalness', 'engagingness', 'groundedness', 'understandability']
 
     def evaluate(self, data, dims=None, overall=True, print_result=False):
         """
@@ -421,8 +422,6 @@ class TranslationEvaluator:
                     source = data[i]['source']
                     system_outputs = sent_tokenize(data[i]['system_output'])
                     if len(system_outputs) == 0:
-                        print(f"SENT TOKENIZER FOUND {len(system_outputs)} sentences in the following output")
-                        print(data[i])
                         raise Exception()
                     n_sents.append(len(system_outputs))
                     for j in range(len(system_outputs)):
@@ -431,25 +430,43 @@ class TranslationEvaluator:
                 input_list = add_question(dimension=dim, output=output_list,
                                           src=src_list, task=self.task)
                 sent_score = self.scorer.score(input_list)
-                print("N_sents: ", n_sents)
                 # Get average score for each sample
                 start_idx = 0
                 score = []
                 for cur_n_sent in n_sents:
                     score.append(sum(sent_score[start_idx: start_idx + cur_n_sent]) / cur_n_sent)
                     start_idx += cur_n_sent
-
-            # Calculate summary-level score for 'coherence' and 'relevance'
-            elif dim == 'coherence' or dim == 'relevance':
-                src_list, output_list, ref_list = [], [], []
+            # Calculate turn-level score for other dimensions
+            elif dim in ['naturalness', 'coherence', 'groundedness', 'understandability']:
+                src_list, output_list, context_list = [], [], []
                 for i in range(n_data):
                     src_list.append(data[i]['source'])
                     output_list.append(data[i]['system_output'])
-                    if dim == 'relevance':
-                        ref_list.append(data[i]['reference'])
                 input_list = add_question(dimension=dim, output=output_list,
-                                          src=src_list, ref=ref_list, task=self.task)
+                                          src=src_list, context=context_list, task=self.task)
                 score = self.scorer.score(input_list)
+            elif dim == 'engagingness':
+                src_list, output_list, context_list = [], [], []
+                n_sents = []  # the number of sentences in each generated response
+                for i in range(n_data):
+                    source = data[i]['source']
+                    system_outputs = sent_tokenize(data[i]['system_output'])
+                    n_sents.append(len(system_outputs))
+                    for j in range(len(system_outputs)):
+                        src_list.append(source)
+                        output_list.append(system_outputs[j])
+                input_list = add_question(dimension=dim, output=output_list,
+                                          src=src_list, context=context_list, task=self.task)
+                sent_score = self.scorer.score(input_list)
+
+                # Get the summation score for each sample
+                start_idx = 0
+                score = []
+                for cur_n_sent in n_sents:
+                    score.append(sum(sent_score[start_idx: start_idx + cur_n_sent]))
+                    start_idx += cur_n_sent
+
+
 
             # Please customize other dimensions here for summarization
             else:
